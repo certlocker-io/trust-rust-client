@@ -1,0 +1,24 @@
+[package]
+name = "trust-client"
+version = "1.0.4"
+edition = "2021"
+rust-version = "1.84"
+description = "Rust client for Certlocker Trust. Read secrets, certificates, and tokens from the Gateway API."
+license = "GPL-3.0-only"
+repository = "https://github.com/certlocker-io/trust-rust-client"
+homepage = "https://trust.certlocker.io"
+readme = "README.md"
+keywords = ["certlocker", "trust", "secrets", "oidc", "certificates"]
+categories = ["api-bindings", "authentication"]
+authors = ["Darren Hudson"]
+
+[dependencies]
+base64 = "=0.22.1"
+chrono = { version = "=0.4.39", default-features = false, features = ["clock", "std", "serde"] }
+ed25519-dalek = { version = "=2.1.1", features = ["pkcs8"] }
+pkcs8 = "=0.10.2"
+reqwest = { version = "=0.12.12", default-features = false, features = ["blocking", "json", "http2", "native-tls", "charset"] }
+serde = { version = "=1.0.217", features = ["derive"] }
+serde_json = "=1.0.134"
+thiserror = "=2.0.11"
+uuid = { version = "=1.11.0", features = ["v4"] }
