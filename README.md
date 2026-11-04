@@ -537,8 +537,8 @@ account mode, `TRUST_SECRET_ID`, and `TRUST_EXPECTED_VALUE` for a synthetic fixt
 cargo run --locked --example smoke
 ```
 
-Only assertion booleans are printed. Live new-Gateway/OIDC checks require the
-enabled deployment and a corresponding identity; these were not claimed as live.
+Only assertion booleans are printed. The real account Gateway and DEVICE OIDC
+results are recorded below; external cloud identity providers need their own fixtures.
 
 ### Real dev API verification (2026-11-04)
 
