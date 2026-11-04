@@ -2,9 +2,9 @@
   "date": "2026-11-04",
   "environment": "isolated remote dev stack",
   "stats": {
-    "startTime": "2026-11-04T15:08:33.717Z",
-    "duration": 21724.31,
-    "expected": 3,
+    "startTime": "2026-11-04T18:32:47.978Z",
+    "duration": 31069.731,
+    "expected": 4,
     "skipped": 0,
     "unexpected": 0,
     "flaky": 0
@@ -20,6 +20,7 @@
       "trust-rust-smoke": true,
       "ansible_account_create_idempotence_lookup": true,
       "gateway_secret_create_lookup_revoke": true,
+      "gateway_assigned_secret_fetch": true,
       "secret_revoked": true,
       "token_revoked": true,
       "logout_removed_credentials": true
@@ -30,6 +31,19 @@
       "token_usable": true,
       "rejects_wrong_key_kid_claim_audience_expiry_type": true,
       "modify_suspend_resume": true
+    },
+    "gateway-assets-proof": {
+      "certificate_metadata": true,
+      "certificate_pem": true,
+      "certificate_bundle": true,
+      "cross_account_bundle_denied": true,
+      "host_wizard": true,
+      "account_host_discovery": true,
+      "certificate_metadata_requires_valid_credential": true,
+      "host_discovery_rejects_invalid_credential_account_and_protocol": true
     }
-  }
+  },
+  "additional_checks": [
+    "Go and Rust SDK certificate metadata, PEM, private-key bundle and token metadata verified by real executable smoke clients"
+  ]
 }
