@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-04",
+  "environment": "isolated remote dev stack",
+  "stats": {
+    "startTime": "2026-11-04T15:08:33.717Z",
+    "duration": 21724.31,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "checks": {
+    "api-proof": {
+      "browser_2fa_cli_pkce_login": true,
+      "pkce_state_and_callback_binding": true,
+      "cli_token_create_read_put": true,
+      "cli_secret_create_read_put": true,
+      "account_scoped_gateway_and_cross_account_denial": true,
+      "trust-go-smoke": true,
+      "trust-rust-smoke": true,
+      "ansible_account_create_idempotence_lookup": true,
+      "gateway_secret_create_lookup_revoke": true,
+      "secret_revoked": true,
+      "token_revoked": true,
+      "logout_removed_credentials": true
+    },
+    "oidc-proof": {
+      "enrollment": true,
+      "signed_exchange": true,
+      "token_usable": true,
+      "rejects_wrong_key_kid_claim_audience_expiry_type": true,
+      "modify_suspend_resume": true
+    }
+  }
+}
