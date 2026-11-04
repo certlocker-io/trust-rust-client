@@ -417,6 +417,14 @@ fn resolve_credentials(
         }
     }
 
+    require_credentials(api_token, account_id, legacy_api)
+}
+
+fn require_credentials(
+    api_token: Option<String>,
+    account_id: Option<String>,
+    legacy_api: bool,
+) -> Result<(String, String), TrustClientError> {
     let api_token = api_token.ok_or_else(|| {
         TrustClientError::config(
             "apiToken is required (or enable ambient OIDC with oidcAudience / preferAmbientOidc)",
@@ -513,11 +521,9 @@ mod tests {
             .unwrap_err();
         assert_eq!(missing_url.to_string(), "url is required");
 
-        let missing_key = TrustClient::builder()
-            .url("https://trust.example.com")
-            .account_id("acct-1")
-            .build()
-            .unwrap_err();
+        // Test validation after credential discovery without probing the host's
+        // cloud metadata endpoint (GitHub-hosted runners may be Azure VMs).
+        let missing_key = require_credentials(None, Some("acct-1".into()), false).unwrap_err();
         assert!(missing_key.to_string().starts_with("apiToken is required"));
 
         let missing_account = TrustClient::builder()
