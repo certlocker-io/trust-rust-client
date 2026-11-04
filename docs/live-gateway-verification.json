@@ -1,0 +1,63 @@
+{
+  "verified_on": "2026-11-04",
+  "scope": "Live legacy Gateway; account mode and OIDC are local contract tests only",
+  "endpoint": "https://trust.certlocker.io/rest",
+  "fixture_name": "api-compatibility-test.ae34827caa774575a4b3533586113d5e",
+  "mode": "legacy",
+  "checks": {
+    "ansible_create_repeat_lookup": {
+      "passed": true,
+      "exit_code": 0
+    },
+    "ansible_tasks": [
+      "TASK [Create disposable fixture] ***********************************************",
+      "changed: [localhost]",
+      "TASK [ansible.builtin.assert] **************************************************",
+      "ok: [localhost]",
+      "TASK [Verify idempotent repeat] ************************************************",
+      "ok: [localhost]",
+      "TASK [ansible.builtin.assert] **************************************************",
+      "ok: [localhost]",
+      "TASK [ansible.builtin.assert] **************************************************",
+      "ok: [localhost]"
+    ],
+    "payload_match": true,
+    "desired_fields": {
+      "name": true,
+      "secret_type": true,
+      "secret": true,
+      "description": true,
+      "groups": true
+    },
+    "metadata_field_names": [
+      "date_created",
+      "date_updated",
+      "description",
+      "groups",
+      "id",
+      "name",
+      "secret_type",
+      "status"
+    ],
+    "go_sdk": {
+      "passed": true,
+      "exit_code": 0,
+      "assertions": {
+        "secret_metadata": true,
+        "secret_value_matches": true,
+        "token_metadata": true
+      }
+    },
+    "rust_sdk": {
+      "passed": true,
+      "exit_code": 0,
+      "assertions": {
+        "secret_metadata": true,
+        "secret_value_matches": true,
+        "token_metadata": true
+      }
+    }
+  },
+  "cleanup": "revoked",
+  "fixture_id": "tbtq5b9jo"
+}

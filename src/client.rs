@@ -56,6 +56,7 @@ struct TrustClientInner {
     url: String,
     api_token: String,
     account_id: String,
+    legacy_api: bool,
     http: reqwest::blocking::Client,
     auth_code_prompt: Option<AuthCodePrompt>,
     access_code: Mutex<Option<String>>,
@@ -72,6 +73,7 @@ impl TrustClient {
         url: String,
         api_token: String,
         account_id: String,
+        legacy_api: bool,
         http: reqwest::blocking::Client,
         auth_code_prompt: Option<AuthCodePrompt>,
     ) -> Self {
@@ -80,6 +82,7 @@ impl TrustClient {
                 url,
                 api_token,
                 account_id,
+                legacy_api,
                 http,
                 auth_code_prompt,
                 access_code: Mutex::new(None),
@@ -147,6 +150,19 @@ impl TrustClient {
     /// Pass [`None`] when the token is assigned to one secret.
     /// Use [`Self::fetch_secret`] for the secret contents.
     pub fn get_secret(&self, secret_id: Option<&str>) -> Result<String, TrustClientError> {
+        if secret_id.is_none() || secret_id == Some("") {
+            let token: serde_json::Value = serde_json::from_str(&self.get_token(self.api_token())?)
+                .map_err(|_| TrustClientError::message("invalid assigned token metadata"))?;
+            let id = token
+                .get("secret_id")
+                .or_else(|| token.get("secretId"))
+                .and_then(|v| v.as_str())
+                .filter(|v| !v.is_empty())
+                .ok_or_else(|| {
+                    TrustClientError::message("API token is not assigned to a secret")
+                })?;
+            return self.process(self.secret_path("get"), Some(id), APPLICATION_JSON);
+        }
         self.process(self.secret_path("get"), secret_id, APPLICATION_JSON)
     }
 
@@ -164,7 +180,15 @@ impl TrustClient {
         &self,
         certificate_id: Option<&str>,
     ) -> Result<String, TrustClientError> {
-        self.process(self.cert_path("get"), certificate_id, APPLICATION_JSON)
+        self.process(
+            self.cert_path("get"),
+            Some(
+                certificate_id
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or(self.api_token()),
+            ),
+            APPLICATION_JSON,
+        )
     }
 
     /// Certificate PEM contents.
@@ -174,7 +198,15 @@ impl TrustClient {
         &self,
         certificate_id: Option<&str>,
     ) -> Result<String, TrustClientError> {
-        self.process(self.cert_path("fetch"), certificate_id, TEXT_PLAIN)
+        self.process(
+            self.cert_path("fetch"),
+            Some(
+                certificate_id
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or(self.api_token()),
+            ),
+            TEXT_PLAIN,
+        )
     }
 
     /// Certificate bundle (certificate and private key PEM).
@@ -184,7 +216,15 @@ impl TrustClient {
         &self,
         certificate_id: Option<&str>,
     ) -> Result<String, TrustClientError> {
-        self.process(self.cert_path("fetch-bundle"), certificate_id, TEXT_PLAIN)
+        self.process(
+            self.cert_path("fetch-bundle"),
+            Some(
+                certificate_id
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or(self.api_token()),
+            ),
+            TEXT_PLAIN,
+        )
     }
 
     /// Token record JSON for `id`.
@@ -193,15 +233,30 @@ impl TrustClient {
     }
 
     fn cert_path(&self, action: &str) -> String {
-        action_path("cert", &self.inner.account_id, action)
+        action_path(
+            "cert",
+            &self.inner.account_id,
+            action,
+            self.inner.legacy_api,
+        )
     }
 
     fn secret_path(&self, action: &str) -> String {
-        action_path("secret", &self.inner.account_id, action)
+        action_path(
+            "secret",
+            &self.inner.account_id,
+            action,
+            self.inner.legacy_api,
+        )
     }
 
     fn token_path(&self, action: &str) -> String {
-        action_path("token", &self.inner.account_id, action)
+        action_path(
+            "token",
+            &self.inner.account_id,
+            action,
+            self.inner.legacy_api,
+        )
     }
 
     fn process(
@@ -297,7 +352,10 @@ impl std::fmt::Debug for TrustClient {
     }
 }
 
-fn action_path(resource: &str, account_id: &str, action: &str) -> String {
+fn action_path(resource: &str, account_id: &str, action: &str, legacy: bool) -> String {
+    if legacy {
+        return format!("{TRUST_BASE}/{resource}/{action}");
+    }
     format!(
         "{TRUST_BASE}/{resource}/{}/{action}",
         encode_segment(account_id)

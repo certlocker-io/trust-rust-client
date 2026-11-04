@@ -198,9 +198,18 @@ fn request_body(id_token: &str, token_type: Option<TokenType>) -> String {
         "idToken".to_owned(),
         serde_json::Value::String(id_token.to_owned()),
     );
+    // Current Gateway uses snake_case; retain camelCase for older deployments.
+    body.insert(
+        "id_token".to_owned(),
+        serde_json::Value::String(id_token.to_owned()),
+    );
     if let Some(token_type) = token_type {
         body.insert(
             "tokenType".to_owned(),
+            serde_json::Value::String(token_type.as_str().to_owned()),
+        );
+        body.insert(
+            "token_type".to_owned(),
             serde_json::Value::String(token_type.as_str().to_owned()),
         );
     }
@@ -265,10 +274,13 @@ mod tests {
 
     #[test]
     fn request_body_includes_the_mint_type_only_when_asked() {
-        assert_eq!(request_body("jwt", None), r#"{"idToken":"jwt"}"#);
+        assert_eq!(
+            request_body("jwt", None),
+            r#"{"idToken":"jwt","id_token":"jwt"}"#
+        );
         assert_eq!(
             request_body("jwt", Some(TokenType::Mcp)),
-            r#"{"idToken":"jwt","tokenType":"MCP"}"#
+            r#"{"idToken":"jwt","id_token":"jwt","tokenType":"MCP","token_type":"MCP"}"#
         );
         let err = exchange("https://trust.example.com", "jwt", Some(TokenType::Root)).unwrap_err();
         assert!(err.to_string().contains("SECRET, CERTIFICATE, or MCP"));

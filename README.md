@@ -244,7 +244,7 @@ assert_eq!(secret.token_type_enum(), Some(TokenType::Secret));
 
 `None` leaves the mint type unset so the principal default is used. `from_ambient_oidc`, `from_device_oidc`, and `from_id_token` use that default.
 
-The exchange is `POST {trustUrl}/rest/api/v1/oidc/exchange` with `{"idToken":"...","tokenType":"CERTIFICATE"}`. `tokenType` is omitted when it was `None`. A 200 body with `errorMessage` set is a denial. `expiresAt` may be RFC 3339 or a UTC local datetime (`2026-11-01T12:00:00`).
+The exchange is `POST {trustUrl}/rest/api/v1/oidc/exchange` with `{"idToken":"...","tokenType":"CERTIFICATE"}`. The request also includes `id_token` and (when set) `token_type` for the current Gateway snake_case mapper. Both mint-type spellings are omitted when the type is `None`. A 200 body with `errorMessage` set is a denial. `expiresAt` may be RFC 3339 or a UTC local datetime (`2026-11-01T12:00:00`).
 
 ### 2FA / access-code step-up
 
@@ -303,9 +303,9 @@ fn main() -> Result<(), trust_client::TrustClientError> {
         println!("ed25519 key for {}", pem.username.unwrap_or_default());
     }
 
-    let certificate = service.get_certificate("certId")?;
-    let pem_leaf = service.fetch_certificate("certId")?;
-    let bundle = service.fetch_certificate_bundle("certId")?;
+    let certificate = service.get_certificate("certificate-token-id")?;
+    let pem_leaf = service.fetch_certificate("certificate-token-id")?;
+    let bundle = service.fetch_certificate_bundle("certificate-token-id")?;
 
     let token = service.get_token("tokenId")?;
     println!("{:?} {}", token.token_type, token.is_active());
@@ -330,8 +330,8 @@ The low-level client returns response text. Pass `None` for the assigned asset:
 ```rust
 let record_json = client.get_secret(Some("mvusgvkv5"))?;
 let contents = client.fetch_secret(None)?;
-let leaf = client.fetch_certificate(Some("certId"))?;
-let bundle = client.fetch_certificate_bundle(Some("certId"))?;
+let leaf = client.fetch_certificate(Some("certificate-token-id"))?;
+let bundle = client.fetch_certificate_bundle(Some("certificate-token-id"))?;
 let token_json = client.get_token("tokenId")?;
 ```
 
@@ -484,3 +484,41 @@ The tests cover URL validation, snake_case records, device JWT signing against t
 ## License
 
 Licensed under GNU General Public License v3.0. See [LICENSE](LICENSE).
+
+## Gateway rollout compatibility (2026-11-04)
+
+Legacy Gateway URLs and the new account-scoped URLs are both supported. Select
+the mode explicitly during rollout; authentication or authorization failures never
+trigger a retry against the other mode. The account must belong to the token.
+
+```rust
+let client = TrustClient::builder()
+    .url("https://trust.certlocker.io")
+    .api_token(token)
+    .legacy_api(true)
+    .build()?;
+```
+
+Use `.account_id(account_id)` with the default mode for the new Gateway. Base URLs
+omit `/rest`. Certificate methods take a CERTIFICATE access-token ID, not a
+certificate asset ID; `None` uses the configured API token. `get_secret(None)`
+resolves the assigned secret through token metadata and errors if unassigned.
+OIDC exchange sends both snake_case/camelCase fields and accepts both responses.
+
+Validation: `cargo test --locked` — 32 passed (19 unit, 10 integration, 3 doc);
+`cargo clippy --all-targets --locked -- -D warnings` and `cargo fmt --all -- --check`
+also pass. Both route modes and denied requests without fallback are covered.
+Live legacy secret metadata, exact payload and token metadata passed against a
+disposable Ansible-created fixture, revoked afterward. See
+[live evidence](docs/live-gateway-verification.json).
+
+For a read-only live check, securely supply `CERTLOCKER_TOKEN`, `TRUST_URL` without
+`/rest`, `CERTLOCKER_API_MODE=legacy` or `account`, `CERTLOCKER_ACCOUNT_ID` for
+account mode, `TRUST_SECRET_ID`, and `TRUST_EXPECTED_VALUE` for a synthetic fixture:
+
+```bash
+cargo run --locked --example smoke
+```
+
+Only assertion booleans are printed. Live new-Gateway/OIDC checks require the
+enabled deployment and a corresponding identity; these were not claimed as live.

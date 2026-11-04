@@ -519,3 +519,74 @@ fn github_actions_availability_follows_the_process_environment() {
                 .is_some_and(|value| !value.trim().is_empty())
     });
 }
+
+#[test]
+fn exchanges_with_current_gateway_snake_case_contract() {
+    let server = Mock::spawn(|hit, _| {
+        let body: serde_json::Value = serde_json::from_str(&hit.body).unwrap();
+        assert_eq!(body["id_token"], "fixture-jwt");
+        assert_eq!(body["token_type"], "SECRET");
+        (
+            200,
+            vec![("Content-Type", "application/json".to_owned())],
+            r#"{"token_id":"fixture-token","account_id":"acct-current","token_type":"SECRET","expires_at":"2026-11-04T12:00:00"}"#.to_owned(),
+        )
+    });
+    let exchanged = oidc::exchange(&server.url, "fixture-jwt", Some(TokenType::Secret)).unwrap();
+    assert_eq!(exchanged.token_id, "fixture-token");
+    assert_eq!(exchanged.account_id.as_deref(), Some("acct-current"));
+    assert!(exchanged.expires_at.is_some());
+}
+
+#[test]
+fn legacy_and_account_routes_resolve_assigned_assets_without_downgrade() {
+    for legacy in [true, false] {
+        let account = if legacy { "" } else { "acct-1/" };
+        let server = Mock::spawn(move |hit, _| {
+            if hit.path == format!("/rest/api/v1/token/{account}get/test-token") {
+                return (200, vec![], r#"{"secret_id":"bound-secret"}"#.to_owned());
+            }
+            if hit.path.ends_with("/denied") {
+                return (403, vec![], "denied".to_owned());
+            }
+            (200, vec![], r#"{"id":"fixture"}"#.to_owned())
+        });
+        let mut builder = TrustClient::builder()
+            .url(&server.url)
+            .api_token("test-token")
+            .legacy_api(legacy);
+        if !legacy {
+            builder = builder.account_id("acct-1");
+        }
+        let trust = builder.build().unwrap();
+        trust.get_secret(None).unwrap();
+        trust.fetch_secret(Some("a/b")).unwrap();
+        trust.get_certificate(None).unwrap();
+        trust.fetch_certificate_bundle(Some("cert-token")).unwrap();
+        let expected = [
+            format!("/rest/api/v1/token/{account}get/test-token"),
+            format!("/rest/api/v1/secret/{account}get/bound-secret"),
+            format!("/rest/api/v1/secret/{account}fetch/a%2Fb"),
+            format!("/rest/api/v1/cert/{account}get/test-token"),
+            format!("/rest/api/v1/cert/{account}fetch-bundle/cert-token"),
+        ];
+        let paths: Vec<String> = server
+            .hits
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|h| h.path.clone())
+            .collect();
+        assert_eq!(paths, expected);
+        assert_eq!(
+            trust
+                .fetch_secret(Some("denied"))
+                .unwrap_err()
+                .trust_error()
+                .unwrap()
+                .http_status,
+            403
+        );
+        assert_eq!(server.hit_count(), 6);
+    }
+}

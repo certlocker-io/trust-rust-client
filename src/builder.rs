@@ -88,6 +88,7 @@ pub struct TrustClientBuilder {
     url: Option<String>,
     api_token: Option<String>,
     account_id: Option<String>,
+    legacy_api: bool,
     oidc_audience: Option<String>,
     prefer_ambient_oidc: bool,
     auth_code_prompt: Option<AuthCodePrompt>,
@@ -128,6 +129,12 @@ impl TrustClientBuilder {
     /// is omitted, the account id is taken from the exchange response.
     pub fn account_id(mut self, account_id: impl Into<String>) -> Self {
         self.account_id = Some(account_id.into());
+        self
+    }
+
+    /// Select pre-account-ID Gateway routes explicitly. Never retries in another mode.
+    pub fn legacy_api(mut self, legacy: bool) -> Self {
+        self.legacy_api = legacy;
         self
     }
 
@@ -334,11 +341,13 @@ impl TrustClientBuilder {
             self.account_id,
             self.oidc_audience.as_deref(),
             self.prefer_ambient_oidc,
+            self.legacy_api,
         )?;
         Ok(TrustClient::from_parts(
             url,
             api_token,
             account_id,
+            self.legacy_api,
             http,
             self.auth_code_prompt,
         ))
@@ -370,6 +379,7 @@ fn resolve_credentials(
     account_id: Option<String>,
     oidc_audience: Option<&str>,
     prefer_ambient_oidc: bool,
+    legacy_api: bool,
 ) -> Result<(String, String), TrustClientError> {
     let mut api_token = api_token.filter(|value| !value.trim().is_empty());
     let mut account_id = account_id.filter(|value| !value.trim().is_empty());
@@ -412,7 +422,11 @@ fn resolve_credentials(
             "apiToken is required (or enable ambient OIDC with oidcAudience / preferAmbientOidc)",
         )
     })?;
-    let account_id = account_id.ok_or_else(|| TrustClientError::config("accountId is required"))?;
+    let account_id = if legacy_api {
+        account_id.unwrap_or_default()
+    } else {
+        account_id.ok_or_else(|| TrustClientError::config("accountId is required"))?
+    };
     Ok((api_token, account_id))
 }
 
