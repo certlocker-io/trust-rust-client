@@ -14,10 +14,10 @@ Requires **Rust 1.84** or newer. This repository's `Cargo.lock` is pinned so `ca
 
 ```toml
 [dependencies]
-trust-client = "1.0.4"
+trust-client = { git = "https://github.com/certlocker-io/trust-rust-client", branch = "main" }
 ```
 
-From this repository while it is not on crates.io:
+For adjacent local checkouts:
 
 ```toml
 [dependencies]
@@ -25,6 +25,23 @@ trust-client = { path = "../trust-rust-client" }
 ```
 
 HTTP uses `reqwest` with the platform TLS stack. JSON uses `serde`. Device OIDC signs Ed25519 JWTs locally. No OpenSSL install is required on macOS or Windows.
+
+## Build and test from source
+
+```bash
+git clone https://github.com/certlocker-io/trust-rust-client.git
+cd trust-rust-client
+cargo test --locked
+cargo clippy --locked --all-targets -- -D warnings
+cargo build --locked --all-targets
+```
+
+[CI](https://github.com/certlocker-io/trust-rust-client/actions/workflows/ci.yml)
+tests on Linux, macOS and Windows, checks Rust 1.84 compatibility, and uploads a
+validated crate archive. It does not publish to crates.io. For a read-only live
+smoke check, provide the environment described below and run
+`cargo run --locked --example smoke`. For management creation/update and browser
+login, use [trust-cli](https://github.com/certlocker-io/trust-cli).
 
 ## Features
 
@@ -36,7 +53,7 @@ HTTP uses `reqwest` with the platform TLS stack. JSON uses `serde`. Device OIDC 
 - **Auth** — UI-minted static API token. Ambient OIDC (GitHub Actions, GCP, Azure, Azure DevOps). Device OIDC. Optional mint type `SECRET` / `CERTIFICATE` / `MCP`. 2FA access-code prompt.
 - **Paths** — every Gateway asset call includes `{accountId}`. That path account must match the token's account.
 
-Asset JSON is snake_case (`secret_type`, `date_created`). The OIDC exchange body and response are camelCase (`tokenId`, `accountId`). Unknown JSON fields are ignored. Timestamps are UTC. A JSON array **or** a single JSON value is accepted anywhere the client expects a list.
+Asset JSON is snake_case (`secret_type`, `date_created`). OIDC accepts snake_case (`token_id`, `account_id`) and camelCase (`tokenId`, `accountId`); requests include both naming conventions. Unknown JSON fields are ignored. Timestamps are UTC. A JSON array **or** a single JSON value is accepted anywhere the client expects a list.
 
 Dropping a `TrustClient` or `TrustService` drops the connection pool. `Debug` prints the URL and account id and redacts the API token. `api_token()` still returns the credential, so do not log that value.
 
