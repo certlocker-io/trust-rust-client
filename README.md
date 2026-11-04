@@ -551,3 +551,9 @@ This verifies the tested dev source plus the CLI route-access and shared DAO enu
 conversion fixes; it does not assert a public deployment has been upgraded.
 The reproducible scenario is Trust's `e2e/specs/dev-api-compatibility.phase.spec.ts`
 (lifecycle phase 41). Public cloud OIDC providers are separate integration coverage.
+
+For a certificate retrieval smoke check, supply a CERTIFICATE token assigned to
+your disposable certificate and set `TRUST_CERTIFICATE_ID` to the expected
+certificate record ID. Run the same smoke command. It verifies metadata, PEM,
+private-key bundle, and token metadata without printing returned material.
+The secret fixture variables are not used in this mode.
